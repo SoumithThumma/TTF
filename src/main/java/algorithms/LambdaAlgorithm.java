@@ -40,9 +40,9 @@ public class LambdaAlgorithm implements Algorithm {
 		int populationSize = numOfSolutions;
 
 		// Tournament size
-		int tournamentSize = 6;
+		int tournamentSize = 4;
 
-		double mutationRate = 0.5;
+		int mutationFactor = 3;
 
 		int totalGenerations = 100000;
 
@@ -85,9 +85,14 @@ public class LambdaAlgorithm implements Algorithm {
 			List<Solution> childPopulation = new ArrayList<>();
 
 			while (childPopulation.size() < populationSize) {
-				tournamentSelection(tournamentSize, population, populationSize, problem, mutationRate, childPopulation);
+				tournamentSelection(tournamentSize, population, populationSize, problem, mutationFactor,
+						childPopulation);
 			}
 			population.addAll(childPopulation);
+
+			for (int j = 0; j < population.size(); j++) {
+				population.get(j).index = j;
+			}
 			calculatePopulationFitness(population);
 			Collections.sort(population, solutionComparator);
 
@@ -104,7 +109,7 @@ public class LambdaAlgorithm implements Algorithm {
 	}
 
 	private void tournamentSelection(int tournamentSize, List<Solution> population, int populationSize,
-			TravelingThiefProblem problem, double mutationRate, List<Solution> childPopulation) {
+			TravelingThiefProblem problem, int mutationFactor, List<Solution> childPopulation) {
 		// Initiate random class
 		Random rand = new Random();
 		// List to keep track of solutions that have been selected
@@ -185,11 +190,11 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 			t++;
 		}
-		crossover(parentA, parentB, population, problem, mutationRate, childPopulation);
+		crossover(parentA, parentB, population, problem, mutationFactor, childPopulation);
 	}
 
 	private void crossover(Solution parentA, Solution parentB, List<Solution> population, TravelingThiefProblem problem,
-			double mutationRate, List<Solution> childPopulation) {
+			int mutationFactor, List<Solution> childPopulation) {
 		Random rand = new Random();
 
 		// Choosing a random crossover point
@@ -242,31 +247,51 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 		}
 
-		this.mutate(childCPi, childDPi, childCz, childDz, population, mutationRate, childPopulation, problem);
+		this.mutate(childCPi, childDPi, childCz, childDz, population, mutationFactor, childPopulation, problem);
 
 	}
 
 	private void mutate(List<Integer> childCPi, List<Integer> childDPi, List<Boolean> childCz, List<Boolean> childDz,
-			List<Solution> population, double mutationRate, List<Solution> childPopulation,
+			List<Solution> population, int mutationFactor, List<Solution> childPopulation,
 			TravelingThiefProblem problem) {
 
 		Random rand = new Random();
-		if (rand.nextInt(100) <= mutationRate * 100) {
-			int randomMutation = rand.nextInt(childCz.size());
-			if (childCz.get(randomMutation)) {
-				childCz.set(randomMutation, false);
-			} else {
-				childCz.set(randomMutation, true);
-			}
-		}
 
-		if (rand.nextInt(100) <= mutationRate * 100) {
-			int randomMutation = rand.nextInt(childDz.size());
-			if (childDz.get(randomMutation)) {
-				childDz.set(randomMutation, false);
-			} else {
-				childDz.set(randomMutation, true);
+		// Lists to hold previous mutating points to avoid repetition
+		List<Integer> prevCmutations = new ArrayList<>();
+		List<Integer> prevDmutations = new ArrayList<>();
+
+		// Run the desired number of mutations
+		int mutation = 0;
+
+		while (mutation < mutationFactor) {
+
+			int indexToMutateforC = rand.nextInt(childCz.size());
+			// If previous mutations does not contain this point flip the solution
+			while (prevCmutations.contains(indexToMutateforC)) {
+				indexToMutateforC = rand.nextInt(childCz.size());
 			}
+			prevCmutations.add(indexToMutateforC);
+
+			if (childCz.get(indexToMutateforC)) {
+				childCz.set(indexToMutateforC, false);
+			} else {
+				childCz.set(indexToMutateforC, true);
+			}
+
+			int indexToMutateforD = rand.nextInt(childDz.size());
+			// If previous mutations does not contain this point flip the solution
+			while (prevDmutations.contains(indexToMutateforD)) {
+				indexToMutateforD = rand.nextInt(childDz.size());
+			}
+			prevDmutations.add(indexToMutateforD);
+			if (childDz.get(indexToMutateforD)) {
+				childDz.set(indexToMutateforD, false);
+			} else {
+				childDz.set(indexToMutateforD, true);
+			}
+
+			mutation++;
 		}
 
 		Solution childC = problem.evaluate(childCPi, childCz, true);
@@ -366,8 +391,9 @@ public class LambdaAlgorithm implements Algorithm {
 				continue;
 			}
 
-			if ((s.time <= solution.time && s.profit <= solution.profit)
-					&& (s.time < solution.time || s.profit < solution.profit)) {
+			if ((s.objectives.get(0) <= solution.objectives.get(0) && s.objectives.get(1) <= solution.objectives.get(1))
+					&& (s.objectives.get(0) < solution.objectives.get(0)
+							|| s.objectives.get(1) < solution.objectives.get(1))) {
 				return false;
 			}
 
@@ -381,11 +407,10 @@ public class LambdaAlgorithm implements Algorithm {
 			if (s.time != Double.MAX_VALUE && s.time > maxTime) {
 				maxTime = s.time;
 			}
-			if (s.profit > maxProfit) {
+			if (s.profit != Double.MAX_VALUE && s.profit > maxProfit) {
 				maxProfit = s.profit;
 			}
 		}
-
 		for (Solution s : population) {
 			s.normalizedTime = s.time / maxTime;
 			s.normalizedProfit = s.profit / maxProfit;

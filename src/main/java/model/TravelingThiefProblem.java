@@ -101,6 +101,7 @@ public class TravelingThiefProblem {
 		// the values that are evaluated in this function
 		double time = 0;
 		double profit = 0;
+		int rank = -1;
 
 		// attributes in the beginning of the tour
 		double weight = 0;
@@ -127,6 +128,7 @@ public class TravelingThiefProblem {
 			if (weight > maxWeight) {
 				time = Double.MAX_VALUE;
 				profit = -Double.MAX_VALUE;
+				rank = Integer.MAX_VALUE;
 				break;
 			}
 
@@ -153,6 +155,7 @@ public class TravelingThiefProblem {
 		}
 		s.time = time;
 		s.profit = profit;
+		s.setRank(rank);
 		s.singleObjective = profit - this.R * time;
 		s.objectives = Arrays.asList(time, -profit);
 

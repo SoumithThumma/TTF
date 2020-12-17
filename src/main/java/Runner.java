@@ -17,7 +17,7 @@ class Runner {
 	public static void main(String[] args) throws IOException {
 
 		List<String> instanceToRun = Arrays.asList("a280-n279");
-		// List<String> instanceToRun = Competition.INSTANCES;
+		 //List<String> instanceToRun = Competition.INSTANCES;
 
 		for (String instance : instanceToRun) {
 
