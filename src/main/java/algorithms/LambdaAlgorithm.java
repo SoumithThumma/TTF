@@ -13,10 +13,12 @@ import java.util.stream.Collectors;
 import model.Solution;
 import model.TravelingThiefProblem;
 
+// NSGA II Algorithm for team Lambda to solve the traveling thief problem
 public class LambdaAlgorithm implements Algorithm {
 
 	private int numOfSolutions;
 
+	// Initiate the number of solutions from the problem
 	public LambdaAlgorithm(int numOfSolutions) {
 		this.numOfSolutions = numOfSolutions;
 	}
@@ -25,12 +27,14 @@ public class LambdaAlgorithm implements Algorithm {
 	public List<Solution> solve(TravelingThiefProblem problem) {
 
 		Random rand = new Random();
+
+		// Calculate the total weight of the bags in the problem
 		Double totalWeight = 0.0;
 		for (Double weight : problem.weight) {
 			totalWeight += weight;
-
 		}
 
+		// Set the probability ratio out of 100
 		int ratio = (int) ((problem.maxWeight / totalWeight) * 90);
 
 		// List to hold initial population
@@ -42,11 +46,16 @@ public class LambdaAlgorithm implements Algorithm {
 		// Tournament size
 		int tournamentSize = 4;
 
+		// Mutation Factor
 		int mutationFactor = 3;
 
-		int totalGenerations = 100000;
+		// Number of generations to run the algorithm for
+		int totalGenerations = 15000;
 
+		// Init i for indices
 		int i = 0;
+
+		// Create initial population
 		while (population.size() < populationSize) {
 			List<Integer> pi;
 
@@ -66,7 +75,7 @@ public class LambdaAlgorithm implements Algorithm {
 				}
 			}
 
-			// evaluate for this random tour
+			// Evaluate for this random tour
 			Solution s = problem.evaluate(pi, z, true);
 			if (s != null) {
 				s.index = i;
@@ -75,29 +84,39 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 
 		}
+
 		calculatePopulationFitness(population);
 
+		// Starting point for generations
 		int gen = 0;
 
+		// Comparator for Pareto front and crowding distance
 		SolutionComparator solutionComparator = new SolutionComparator();
 
+		// Run the algorithm for the required number of generations
 		while (gen <= totalGenerations) {
 			List<Solution> childPopulation = new ArrayList<>();
 
 			while (childPopulation.size() < populationSize) {
+				// Starting point of the NSGA II Algorithm
 				tournamentSelection(tournamentSize, population, populationSize, problem, mutationFactor,
 						childPopulation);
 			}
 			population.addAll(childPopulation);
 
+			// Reset indices
 			for (int j = 0; j < population.size(); j++) {
 				population.get(j).index = j;
 			}
+			// Calculate the fitness with the children in the population
 			calculatePopulationFitness(population);
+			// Sort population according to fitness
 			Collections.sort(population, solutionComparator);
 
+			// Get the desired population size after evaluating fitness
 			population = population.subList(0, populationSize);
 
+			// Reset indices
 			for (int j = 0; j < population.size(); j++) {
 				population.get(j).index = j;
 			}
@@ -124,7 +143,7 @@ public class LambdaAlgorithm implements Algorithm {
 		parentA.index = randomNumber;
 		parentA.rank = population.get(randomNumber).rank;
 		parentA.crowdingDistance = population.get(randomNumber).crowdingDistance;
-		// Initiate t =1 and keep incrementing until t reaches the desired tournament
+		// Initiate t = 1 and keep incrementing until t reaches the desired tournament
 		// size
 		int t = 1;
 
@@ -155,6 +174,7 @@ public class LambdaAlgorithm implements Algorithm {
 		prevNumbers = new ArrayList<>();
 		prevNumbers.add(parentA.index);
 
+		// Get parent B
 		randomNumber = rand.nextInt(populationSize);
 		while (prevNumbers.contains(randomNumber)) {
 			randomNumber = randomNumber + 1;
@@ -190,6 +210,7 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 			t++;
 		}
+		// After tournament selection is done run a crossover
 		crossover(parentA, parentB, population, problem, mutationFactor, childPopulation);
 	}
 
@@ -202,6 +223,8 @@ public class LambdaAlgorithm implements Algorithm {
 		int piSize = parentAfromPop.pi.size();
 		int crossOverPoint = rand.nextInt(piSize);
 
+		// Lists to hold paths of crossover
+
 		List<Integer> parentARightPath = new ArrayList<>();
 
 		List<Integer> parentBRightPath = new ArrayList<>();
@@ -210,11 +233,14 @@ public class LambdaAlgorithm implements Algorithm {
 		List<Integer> childDPi = new ArrayList<>();
 
 		Solution parentBfromPop = population.get(parentB.index);
+		// Add the path to the right of the cross over point
 		for (int i = crossOverPoint; i < piSize; i++) {
 			parentARightPath.add(parentAfromPop.pi.get(i));
 			parentBRightPath.add(parentBfromPop.pi.get(i));
 		}
 
+		// Add points to child C from parent B if they are not in the right side of
+		// Parent A
 		for (int i = 0; i < piSize; i++) {
 
 			Integer parentBpi = parentBfromPop.pi.get(i);
@@ -223,8 +249,10 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 
 		}
+		// Add all points in the right path of parent A to child C
 		childCPi.addAll(parentARightPath);
 
+		// Repeat the same as above from child D from parent As
 		for (int i = 0; i < piSize; i++) {
 
 			Integer parentApi = parentAfromPop.pi.get(i);
@@ -235,6 +263,7 @@ public class LambdaAlgorithm implements Algorithm {
 		}
 		childDPi.addAll(parentBRightPath);
 
+		// Uniform crossover between child C and D
 		List<Boolean> childCz = new ArrayList<>();
 		List<Boolean> childDz = new ArrayList<>();
 		for (int i = 0; i < parentAfromPop.z.size(); i++) {
@@ -247,6 +276,7 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 		}
 
+		// Start the mutation
 		this.mutate(childCPi, childDPi, childCz, childDz, population, mutationFactor, childPopulation, problem);
 
 	}
@@ -294,6 +324,7 @@ public class LambdaAlgorithm implements Algorithm {
 			mutation++;
 		}
 
+		// Evaluate the new children with mutations
 		Solution childC = problem.evaluate(childCPi, childCz, true);
 		Solution childD = problem.evaluate(childDPi, childDz, true);
 
@@ -302,6 +333,8 @@ public class LambdaAlgorithm implements Algorithm {
 
 	}
 
+	// Evaluate which one of the solutions s1 or s2 is better using rank and
+	// crowding distance
 	private boolean isFirstSolutionBetter(Solution s1, Solution s2) {
 		if (s1.rank < s2.rank) {
 			return true;
@@ -312,21 +345,27 @@ public class LambdaAlgorithm implements Algorithm {
 		return false;
 	}
 
+	// Determine the fitness of all the solutions in the population
 	private void calculatePopulationFitness(List<Solution> population) {
+
+		// Reset rank and crowding distance
 		for (Solution s : population) {
 			s.rank = -1;
 			s.crowdingDistance = -1;
 		}
 
+		// Normalize values
 		normalizeFitnessValues(population);
 		List<Solution> remainingToBeRanked = new ArrayList<>(population);
 
+		// Set initial rank
 		int rank = 1;
 
 		while (remainingToBeRanked.size() > 0) {
 
 			List<Integer> solutionsIndexInRank = new ArrayList<>();
 
+			// If a solution is non dominated set the current rank
 			for (int i = 0; i < remainingToBeRanked.size(); i++) {
 				if (isNotDominated(remainingToBeRanked, remainingToBeRanked.get(i))) {
 					remainingToBeRanked.get(i).rank = rank;
@@ -336,6 +375,7 @@ public class LambdaAlgorithm implements Algorithm {
 
 			Iterator<Solution> i = remainingToBeRanked.iterator();
 
+			// Remove solutions that were ranked
 			while (i.hasNext()) {
 				Solution sol = i.next();
 				if (sol.time == Double.MAX_VALUE) {
@@ -349,8 +389,10 @@ public class LambdaAlgorithm implements Algorithm {
 			rank++;
 		}
 
+		// Map to hold solutions grouped by ranks
 		Map<Integer, List<Solution>> mapByRanks = population.stream().collect(Collectors.groupingBy(Solution::getRank));
 
+		// Calculate crowding distance of solutions in every front
 		for (Entry<Integer, List<Solution>> entry : mapByRanks.entrySet()) {
 			if (entry.getKey() != Integer.MAX_VALUE) {
 				calculateCrowdingDistance(entry.getValue());
@@ -360,6 +402,7 @@ public class LambdaAlgorithm implements Algorithm {
 
 	}
 
+	// Method to calculate crowding distance
 	private void calculateCrowdingDistance(List<Solution> solutions) {
 		solutions.sort(Comparator.comparing(a -> a.normalizedTime));
 
@@ -380,11 +423,13 @@ public class LambdaAlgorithm implements Algorithm {
 
 	}
 
+	// Method to calculate euclidean distance
 	public double euclideanDistance(Solution a, Solution b) {
 		return Math.sqrt(Math.pow(a.normalizedTime - b.normalizedTime, 2)
 				+ Math.pow(a.normalizedProfit - b.normalizedProfit, 2));
 	}
 
+	// Check whether a solution is dominated or not in the population to assign rank
 	private boolean isNotDominated(List<Solution> remainingToBeRanked, Solution solution) {
 		for (Solution s : remainingToBeRanked) {
 			if (s == solution) {
@@ -401,6 +446,7 @@ public class LambdaAlgorithm implements Algorithm {
 		return true;
 	}
 
+	// Normalize time and profit when calculating fitness
 	private void normalizeFitnessValues(List<Solution> population) {
 		Double maxTime = 0.0, maxProfit = 0.0;
 		for (Solution s : population) {
