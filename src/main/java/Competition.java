@@ -6,7 +6,7 @@ public class Competition {
 
 
     //! Please type your team name here. Do not use "_" in your name please.
-    static final String TEAM_NAME = "MY-TEAM";
+    static final String TEAM_NAME = "Team-Lambda";
 
     static final List<String> INSTANCES = new ArrayList<>(Arrays.asList(
             // a280_n279_bounded-strongly-corr_01.ttp

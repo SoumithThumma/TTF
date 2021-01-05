@@ -28,7 +28,7 @@ public class Verify {
 
 	public static void main(String[] args) throws IOException {
 
-		final String TEAM = "MY-TEAM";
+		final String TEAM = "Team-Lambda";
 
 		List<String> instances = Arrays.asList("a280_n279");
 		// , "a280_n1395", "a280_n2790", "fnl4461_n4460", "fnl4461_n22300",
