@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -16,11 +17,26 @@ import model.TravelingThiefProblem;
 // NSGA II Algorithm for team Lambda to solve the traveling thief problem
 public class LambdaAlgorithm implements Algorithm {
 
-	private int numOfSolutions;
+	// Initial population size
+	int populationSize;
+
+	// Tournament size
+	int tournamentSize = 8;
+
+	// Mutation Factor
+	double mutationFactor = 0.03;
+
+	// Clone Prevention
+	boolean clonePrevention = true;
+
+	// Number of generations to run the algorithm for
+	int totalGenerations = 15000;
+
+	public List<Solution> entries = new LinkedList<>();
 
 	// Initiate the number of solutions from the problem
 	public LambdaAlgorithm(int numOfSolutions) {
-		this.numOfSolutions = numOfSolutions;
+		this.populationSize = numOfSolutions;
 	}
 
 	@Override
@@ -39,18 +55,6 @@ public class LambdaAlgorithm implements Algorithm {
 
 		// List to hold initial population
 		List<Solution> population = new ArrayList<>();
-
-		// Initial population size
-		int populationSize = numOfSolutions;
-
-		// Tournament size
-		int tournamentSize = 4;
-
-		// Mutation Factor
-		int mutationFactor = 3;
-
-		// Number of generations to run the algorithm for
-		int totalGenerations = 15000;
 
 		// Init i for indices
 		int i = 0;
@@ -84,6 +88,7 @@ public class LambdaAlgorithm implements Algorithm {
 			}
 
 		}
+		entries.addAll(population);
 
 		calculatePopulationFitness(population);
 
@@ -93,15 +98,18 @@ public class LambdaAlgorithm implements Algorithm {
 		// Comparator for Pareto front and crowding distance
 		SolutionComparator solutionComparator = new SolutionComparator();
 
+		// Start time
+		long startTime = System.currentTimeMillis();
+
 		// Run the algorithm for the required number of generations
 		while (gen <= totalGenerations) {
 			List<Solution> childPopulation = new ArrayList<>();
 
 			while (childPopulation.size() < populationSize) {
 				// Starting point of the NSGA II Algorithm
-				tournamentSelection(tournamentSize, population, populationSize, problem, mutationFactor,
-						childPopulation);
+				tournamentSelection(population, problem, childPopulation);
 			}
+
 			population.addAll(childPopulation);
 
 			// Reset indices
@@ -120,15 +128,27 @@ public class LambdaAlgorithm implements Algorithm {
 			for (int j = 0; j < population.size(); j++) {
 				population.get(j).index = j;
 			}
+
+			// Reset entries
+			entries = new LinkedList<>();
+			entries.addAll(population);
+			
 			gen++;
-			System.out.println(gen);
+			if (gen % 1000 == 0) {
+				System.out.println(gen);
+			}
 		}
+
+		// End time
+		long endTime = System.currentTimeMillis();
+
+		System.out.println("That took " + (endTime - startTime) / 1000 + " seconds");
 
 		return population;
 	}
 
-	private void tournamentSelection(int tournamentSize, List<Solution> population, int populationSize,
-			TravelingThiefProblem problem, int mutationFactor, List<Solution> childPopulation) {
+	private void tournamentSelection(List<Solution> population, TravelingThiefProblem problem,
+			List<Solution> childPopulation) {
 		// Initiate random class
 		Random rand = new Random();
 		// List to keep track of solutions that have been selected
@@ -211,11 +231,11 @@ public class LambdaAlgorithm implements Algorithm {
 			t++;
 		}
 		// After tournament selection is done run a crossover
-		crossover(parentA, parentB, population, problem, mutationFactor, childPopulation);
+		crossover(parentA, parentB, population, problem, childPopulation);
 	}
 
 	private void crossover(Solution parentA, Solution parentB, List<Solution> population, TravelingThiefProblem problem,
-			int mutationFactor, List<Solution> childPopulation) {
+			List<Solution> childPopulation) {
 		Random rand = new Random();
 
 		// Choosing a random crossover point
@@ -263,7 +283,7 @@ public class LambdaAlgorithm implements Algorithm {
 		}
 		childDPi.addAll(parentBRightPath);
 
-		// Uniform crossover between child C and D
+		// Uniform crossover between child C and D for z
 		List<Boolean> childCz = new ArrayList<>();
 		List<Boolean> childDz = new ArrayList<>();
 		for (int i = 0; i < parentAfromPop.z.size(); i++) {
@@ -277,15 +297,37 @@ public class LambdaAlgorithm implements Algorithm {
 		}
 
 		// Start the mutation
-		this.mutate(childCPi, childDPi, childCz, childDz, population, mutationFactor, childPopulation, problem);
+		this.mutate(childCPi, childDPi, childCz, childDz, population, childPopulation, problem);
 
 	}
 
 	private void mutate(List<Integer> childCPi, List<Integer> childDPi, List<Boolean> childCz, List<Boolean> childDz,
-			List<Solution> population, int mutationFactor, List<Solution> childPopulation,
-			TravelingThiefProblem problem) {
+			List<Solution> population, List<Solution> childPopulation, TravelingThiefProblem problem) {
 
 		Random rand = new Random();
+
+		// Run mutation for path
+		int piSize = childCPi.size();
+		int reversePoint = rand.nextInt(piSize);
+		if (reversePoint == 0) {
+			reversePoint = 1;
+		}
+		int numberOfPathMutations = (int) (mutationFactor * piSize);
+		int reverseEndPoint = numberOfPathMutations + reversePoint;
+		if (reverseEndPoint > piSize) {
+			reverseEndPoint = piSize - 1;
+		}
+		Collections.reverse(childCPi.subList(reversePoint, reverseEndPoint));
+
+		int reversePointforD = rand.nextInt(piSize);
+		if (reversePointforD == 0) {
+			reversePointforD = 1;
+		}
+		int reverseEndPointforD = numberOfPathMutations + reversePointforD;
+		if (reverseEndPointforD > piSize) {
+			reverseEndPointforD = piSize - 1;
+		}
+		Collections.reverse(childDPi.subList(reversePointforD, reverseEndPointforD));
 
 		// Lists to hold previous mutating points to avoid repetition
 		List<Integer> prevCmutations = new ArrayList<>();
@@ -294,7 +336,8 @@ public class LambdaAlgorithm implements Algorithm {
 		// Run the desired number of mutations
 		int mutation = 0;
 
-		while (mutation < mutationFactor) {
+		int numberOfMutations = (int) (mutationFactor * childCz.size());
+		while (mutation < numberOfMutations) {
 
 			int indexToMutateforC = rand.nextInt(childCz.size());
 			// If previous mutations does not contain this point flip the solution
@@ -327,9 +370,41 @@ public class LambdaAlgorithm implements Algorithm {
 		// Evaluate the new children with mutations
 		Solution childC = problem.evaluate(childCPi, childCz, true);
 		Solution childD = problem.evaluate(childDPi, childDz, true);
+		if (!clonePrevention) {
+			childPopulation.add(childC);
+			childPopulation.add(childD);
+			entries.add(childC);
+			entries.add(childD);
+		} else {
+			if (checkForClones(childC)) {
+				childPopulation.add(childC);
+				entries.add(childC);
+			}
 
-		childPopulation.add(childC);
-		childPopulation.add(childD);
+			if (checkForClones(childD)) {
+				childPopulation.add(childD);
+				entries.add(childD);
+			}
+		}
+
+	}
+
+	private boolean checkForClones(Solution s) {
+
+		boolean isAdded = true;
+
+		for (Iterator<Solution> it = entries.iterator(); it.hasNext();) {
+			Solution other = it.next();
+
+			// If equal in design space
+			if (s.equalsInDesignSpace(other)) {
+				System.out.println("Prevented");
+				isAdded = false;
+				break;
+			}
+		}
+
+		return isAdded;
 
 	}
 
