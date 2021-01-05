@@ -38,7 +38,8 @@ In the following the project structure is explained:
     ├── algorithms
         ├── Algorithm: Interface for the algorithm to be implemented from.
         ├── ExhaustiveSearch: Solves the problem exhaustively which means iterating over all possible tours and packing plans.
-        └── RandomLocalSearch: Example algorithm to randomly fix a tour and then iterate over possible packing plans.
+        ├── RandomLocalSearch: Example algorithm to randomly fix a tour and then iterate over possible packing plans.
+        └── LambdaAlgorithm: NSGA II algorithm implemented by team Lambda
 
 
 
