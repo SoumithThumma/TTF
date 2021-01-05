@@ -45,9 +45,8 @@ In the following the project structure is explained:
 Getting Started
 ------------------------------------------------------------
 
-Please have a look at our implementations of ExhaustiveSearch and RandomLocalSearch. The project should provide a starting point to get familiar with the problem and prototype quickly new ideas.
-However, for this competition you have the freedom to use whatever you need, e.g. speed up the evaluation function, reimplement the problem in C, ...
+Please have a look at Team Lambda's implementation of the NSGA II algorithm in the file LambdaAlgorithm.java. The results of all the problem sets can be found in the folder /gecco19-thief/results.
+To check the algorithm against a particular problem please change the instanceToRun variable in the Runner.java file and run. 
+More experimentation can done by changing the tournamentSize, mutationFactor, clonePrevention and totalGenerations variables in the LambdaAlgorithm.
 
-Again, the competition details can be found `Here
-<https://www.egr.msu.edu/coinlab/blankjul/gecco19-thief/>`_.
 
