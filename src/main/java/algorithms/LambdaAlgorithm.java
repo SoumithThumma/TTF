@@ -30,7 +30,7 @@ public class LambdaAlgorithm implements Algorithm {
 	boolean clonePrevention = true;
 
 	// Number of generations to run the algorithm for
-	int totalGenerations = 15000;
+	int totalGenerations = 180;
 
 	public List<Solution> entries = new LinkedList<>();
 
@@ -132,11 +132,11 @@ public class LambdaAlgorithm implements Algorithm {
 			// Reset entries
 			entries = new LinkedList<>();
 			entries.addAll(population);
-			
+
 			gen++;
-			if (gen % 1000 == 0) {
-				System.out.println(gen);
-			}
+
+			System.out.println(gen);
+
 		}
 
 		// End time

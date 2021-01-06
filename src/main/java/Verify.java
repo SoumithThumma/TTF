@@ -30,9 +30,10 @@ public class Verify {
 
 		final String TEAM = "Team-Lambda";
 
-		List<String> instances = Arrays.asList("a280_n279");
-		// , "a280_n1395", "a280_n2790", "fnl4461_n4460", "fnl4461_n22300",
-		// "fnl4461_n44600", "pla33810_n33809", "pla33810_n169045", "pla33810_n338090"
+		List<String> instances = Arrays.asList("a280_n279", "a280_n1395", "a280_n2790", "fnl4461_n4460",
+				"fnl4461_n22300", "fnl4461_n44600", "pla33810_n33809", "pla33810_n169045", "pla33810_n338090");
+		//
+		//
 		for (String instance : instances) {
 
 			// readProblem the problem from the file
