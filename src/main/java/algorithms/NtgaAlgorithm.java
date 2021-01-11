@@ -15,12 +15,12 @@ public class NtgaAlgorithm implements Algorithm{
     /**
      * the hyper-parameters below can by changed logically
      * */
-    int epochs = 10;  // how many iteration will the algorithm run
+    int epochs = 10000;  // how many iteration will the algorithm run
     double initPackingRate = 0.05;
-    int tournamentSize = 50;
+    int tournamentSize = 2;
     double orderCrossoverRate = 0.01;
     double uniformCrossoverRate = 0.01;
-    double mutationRate = 0.05;
+    double mutationRate = 0.03;
 
     // Initiate the number of solutions from the problem
     public NtgaAlgorithm(int numOfSolutions) {
@@ -34,6 +34,8 @@ public class NtgaAlgorithm implements Algorithm{
 
         // generation limitation
         for (int epoch = 0; epoch < epochs; ++epoch) {
+        	// show epoch number
+        	System.out.println("epoch: " + epoch);
             // init a new generation and individual index
             List<Solution> newGeneration = new ArrayList<>();
             int solutionIndex = 0;
@@ -41,6 +43,9 @@ public class NtgaAlgorithm implements Algorithm{
             // non-dominated sorting
             nonDominatedSorting(population, false, true);
 
+            // generation new population
+            //System.out.println("generation new population");
+            
             while (newGeneration.size() < populationSize) {
                 List<Solution> parents = new ArrayList<>();
                 // select two individuals
@@ -49,21 +54,40 @@ public class NtgaAlgorithm implements Algorithm{
                     Solution parent = tournamentSelect(population, tournamentSize, populationSize);
                     parents.add(parent);
                 }
+                
+                // output log
+                //System.out.println("crossover and mutation");
+                
+                
                 // order crossover (OX)
                 List<Solution> offspring = orderCrossover(problem, parents, orderCrossoverRate, uniformCrossoverRate);
                 // in-place mutation
                 mutate(offspring, mutationRate, false);
                 // in-place clone prevent - if a child is cloned from original population then mutate it
                 clonePrevent(offspring, population, mutationRate, false);
+                
+                // output log
+                //System.out.println("crossover and mutation");
 
+                // output log
+                //System.out.println("improvement processing");
                 // improved here - offspring must not worse than parents to make sure population optimized
                 // if you do not want, just comment the while
+                // limit runtime for improvement method
+                int executeControl = 100;
+                int executeTime = 0;
                 while (parentsBetterThanOffspring(problem, offspring, parents)){
+                	if (executeTime > executeControl) {
+						break;
+					}
                     // generate offspring
                     offspring = orderCrossover(problem, parents, orderCrossoverRate, uniformCrossoverRate);
                     mutate(offspring, mutationRate, false);
                     clonePrevent(offspring, population, mutationRate, false);
+                    ++executeTime;
                 }
+                // output log
+                //System.out.println("improvement finished");
 
                 // evaluate offspring and add into new generation
                 for (Solution child : offspring) {
@@ -72,6 +96,9 @@ public class NtgaAlgorithm implements Algorithm{
                     newGeneration.add(child);
                 }
             }
+            // output log
+            //System.out.println("generation finished\n\n\n");
+            
             // reset population
             population = new ArrayList<>(newGeneration);
 
@@ -80,9 +107,9 @@ public class NtgaAlgorithm implements Algorithm{
                 System.out.println("epoch: " + epoch);
 
                 // show objectives for each mini-epoch
-//                for (Solution test : population){
-//                    System.out.println(test.objectives);
-//                }
+                for (Solution test : population){
+                    System.out.println(test.objectives);
+                }
             }
         }
 
