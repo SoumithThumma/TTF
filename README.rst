@@ -12,12 +12,6 @@ Requirements
 Installation
 ------------------------------------------------------------
 
-First, the repository needs to be cloned from GitHub:
-
-.. code-block:: bash
-
-    git clone https://github.com/julesy89/gecco19-thief
-
 Feel free to use the IDE of your choice and import the Maven Project.
 
 
