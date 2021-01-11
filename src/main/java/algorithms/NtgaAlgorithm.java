@@ -8,18 +8,19 @@ import java.util.Random;
 import model.Solution;
 import model.TravelingThiefProblem;
 
-// NTGA (Non-dominated Tournament Genetic Algorithm) implementation for TTP (traveling thief problem)
+
+// an improved NTGA (Non-dominated Tournament Genetic Algorithm) implementation for TTP (traveling thief problem)
 public class NtgaAlgorithm implements Algorithm{
     int populationSize;
     /**
      * the hyper-parameters below can by changed logically
      * */
     int epochs = 10;  // how many iteration will the algorithm run
-    double initPackingRate = 0.01;  // initialised packing rate (Z) - as small as possible
-    int tournamentSize = 50;  // tournament size
+    double initPackingRate = 0.05;
+    int tournamentSize = 50;
     double orderCrossoverRate = 0.01;
-    double uniformCrossoverRate = 0.01;  // uniform crossover rate
-    double mutationRate = 0.05;  // the probability of mutation
+    double uniformCrossoverRate = 0.01;
+    double mutationRate = 0.05;
 
     // Initiate the number of solutions from the problem
     public NtgaAlgorithm(int numOfSolutions) {
@@ -30,19 +31,20 @@ public class NtgaAlgorithm implements Algorithm{
     public List<Solution> solve(TravelingThiefProblem problem) {
         // init population
         List<Solution> population = initPopulation(problem, populationSize, initPackingRate);
-        // Start time
-		long startTime = System.currentTimeMillis();
+
+        // generation limitation
         for (int epoch = 0; epoch < epochs; ++epoch) {
-            // non-dominated sorting
-            nonDominatedSorting(population, false);
-            // init new generation
+            // init a new generation and individual index
             List<Solution> newGeneration = new ArrayList<>();
-            // init index in new population
             int solutionIndex = 0;
+
+            // non-dominated sorting
+            nonDominatedSorting(population, false, true);
+
             while (newGeneration.size() < populationSize) {
                 List<Solution> parents = new ArrayList<>();
                 // select two individuals
-                for (int n = 0; n < 15000; ++n) {
+                for (int n = 0; n < 2; ++n) {
                     // tournament selection
                     Solution parent = tournamentSelect(population, tournamentSize, populationSize);
                     parents.add(parent);
@@ -50,59 +52,88 @@ public class NtgaAlgorithm implements Algorithm{
                 // order crossover (OX)
                 List<Solution> offspring = orderCrossover(problem, parents, orderCrossoverRate, uniformCrossoverRate);
                 // in-place mutation
-                mutate(offspring, mutationRate);
+                mutate(offspring, mutationRate, false);
                 // in-place clone prevent - if a child is cloned from original population then mutate it
-                clonePrevent(offspring, population, mutationRate);
+                clonePrevent(offspring, population, mutationRate, false);
+
+                // improved here - offspring must not worse than parents to make sure population optimized
+                // if you do not want, just comment the while
+                while (parentsBetterThanOffspring(problem, offspring, parents)){
+                    // generate offspring
+                    offspring = orderCrossover(problem, parents, orderCrossoverRate, uniformCrossoverRate);
+                    mutate(offspring, mutationRate, false);
+                    clonePrevent(offspring, population, mutationRate, false);
+                }
+
                 // evaluate offspring and add into new generation
                 for (Solution child : offspring) {
-                    child = problem.evaluate(child.pi, child.z, true);
+                    child = problem.evaluate(child.pi, child.z, true);  // update objectives
                     child.index = solutionIndex++;
                     newGeneration.add(child);
                 }
             }
             // reset population
-            population = newGeneration;
-            
+            population = new ArrayList<>(newGeneration);
+
             // show epoch number
             if (epochs > 10 && epoch % (epochs / 10) == 0) {
                 System.out.println("epoch: " + epoch);
 
-                // show objectives
-                for (Solution test : population){
-                    System.out.println(test.objectives);
-                }
+                // show objectives for each mini-epoch
+//                for (Solution test : population){
+//                    System.out.println(test.objectives);
+//                }
             }
-
         }
-     // End time
-		long endTime = System.currentTimeMillis();
 
-		System.out.println("That took " + (endTime - startTime) / 1000 + " seconds");
-
-//        // show population info
-//        for (Solution individual : population){
-//            System.out.println(individual.objectives);
+        // show objective for the latest generation
+//        for (Solution last : population){
+//            System.out.println(last.objectives);
 //        }
 
         return population;
     }
 
-    
+    /**
+     * whether parents better than offspring
+     */
+    private boolean parentsBetterThanOffspring(TravelingThiefProblem problem, List<Solution> offspring, List<Solution> parents){
+        List<Solution> tempPopulation = new ArrayList<>();
+        int individualIndex = 0;
+        for (Solution parent : parents){
+            List<Integer> tempParentPI = new ArrayList<>(parent.pi);
+            List<Boolean> tempParentZ = new ArrayList<>(parent.z);
+            Solution tempParent = problem.evaluate(tempParentPI, tempParentZ, true);
+            tempParent.index = individualIndex++;
+            tempPopulation.add(tempParent);
+        }
+        for (Solution child : offspring){
+            List<Integer> tempChildPI = new ArrayList<>(child.pi);
+            List<Boolean> tempChildZ = new ArrayList<>(child.z);
+            Solution tempChild = problem.evaluate(tempChildPI, tempChildZ, true);
+            tempChild.index = individualIndex++;
+            tempPopulation.add(tempChild);
+        }
+        List<Integer> tempRanks = nonDominatedSorting(tempPopulation, false, false);
+        int minOffspringRank = Collections.min(tempRanks.subList(2, 4));
+        int maxParentsRank = Collections.max(tempRanks.subList(0, 2));
+        return maxParentsRank < minOffspringRank;
+    }
+
     /**
      * clone prevention - check whether original population contains individual of new population
      * @param newPopulation the population to be checked
      * @param originalPopulation source population
      */
-    private void clonePrevent(List<Solution> newPopulation, List<Solution> originalPopulation, double mutationRate){
+    private void clonePrevent(List<Solution> newPopulation, List<Solution> originalPopulation, double mutationRate, boolean showNotice){
         for (Solution child : newPopulation){
-            for (Solution origin : originalPopulation){
-                if (child.equalsInDesignSpace(origin)) {  // compare the genotype between child and origin
-                    System.out.println("clone prevention execution");
-                    // place child into a list
-                    List<Solution> childInList = new ArrayList<>();
-                    childInList.add(child);
-                    mutate(childInList, mutationRate);  // in-place mutate the individual
-                }
+            while (isCloned(child, originalPopulation)){
+                if (showNotice)
+                    System.out.println("clone prevent execution");
+                // place child into a list
+                List<Solution> childInList = new ArrayList<>();
+                childInList.add(child);
+                mutate(childInList, mutationRate, false);  // in-place mutate the individual
             }
         }
     }
@@ -111,8 +142,9 @@ public class NtgaAlgorithm implements Algorithm{
      * M-gene / Swap individual mutation (in-place)
      * @param IND either an individual or a population
      * @param mutationRate the probability of mutation
+     * @param useSwapMutate whether use Swap Mutation for pi
      */
-    private void mutate(List<Solution> IND, double mutationRate){
+    private void mutate(List<Solution> IND, double mutationRate, boolean useSwapMutate){
         Random rand = new Random();
 
         int percentMutationRate = (int) (mutationRate * 100);  // mutation rate in hundred percent
@@ -129,22 +161,33 @@ public class NtgaAlgorithm implements Algorithm{
             }
         }
 
-        // Swap Mutation PI
-        for (Solution individual : IND) {
-            for (int i = 1; i < individual.pi.size(); ++i) {  // the first tour should not be swap mutated
-                if (rand.nextInt(100) < percentMutationRate) {
-                    // Generate integers in the interval [1, size)
-                    int swapPosition = rand.nextInt(individual.pi.size() - 1) + 1;
-                    while (swapPosition == i)  // make sure the position to be swapped is different from current
-                        swapPosition = rand.nextInt(individual.pi.size() - 1) + 1;
-                    // the value to be swapped
-                    int pi1 = individual.pi.get(i);
-                    int pi2 = individual.pi.get(swapPosition);
-                    // swap
-                    individual.pi.set(i, pi2);
-                    individual.pi.set(swapPosition, pi1);
+        // decide which type of mutation for pi
+        if (useSwapMutate) {
+            // Swap Mutation PI
+            for (Solution individual : IND) {
+                for (int i = 1; i < individual.pi.size(); ++i) {  // the first tour should not be swap mutated
+                    if (rand.nextInt(100) < percentMutationRate) {
+                        // Generate integers in the interval [1, size)
+                        int swapPosition = rand.nextInt(individual.pi.size() - 1) + 1;
+                        while (swapPosition == i)  // make sure the position to be swapped is different from current
+                            swapPosition = rand.nextInt(individual.pi.size() - 1) + 1;
+                        // swap
+                        Collections.swap(individual.pi, i, swapPosition);
+                    }
                 }
             }
+        }
+        else {
+            int reverseStart = rand.nextInt(IND.get(0).pi.size() - 1) + 1;  // random select a point from [1, piSize)
+            int piMutateNumber = (int) (mutationRate * IND.get(0).pi.size());  // number of pi gene to be mutated
+            int reverseEnd = reverseStart + piMutateNumber;  // reverse end point index
+            if (reverseEnd > IND.get(0).pi.size()){  // index limitation
+                reverseEnd = IND.get(0).pi.size();
+            }
+            for (Solution individual : IND){
+                Collections.reverse(individual.pi.subList(reverseStart, reverseEnd));  // mutate execution
+            }
+
         }
     }
 
@@ -152,7 +195,7 @@ public class NtgaAlgorithm implements Algorithm{
      * OX order / uniform crossover
      * @param population a subset of population which only have two individuals
      * @param uniformCrossoverRate uniform crossover rate
-     * @param orderCrossoverRate the percentage of parent gene to not be reserved (sublist)
+     * @param orderCrossoverRate the percentage of parent gene not be reserved
      * @return generated offspring by order crossover operation
      */
     private List<Solution> orderCrossover(TravelingThiefProblem problem, List<Solution> population, double orderCrossoverRate, double uniformCrossoverRate){
@@ -188,12 +231,12 @@ public class NtgaAlgorithm implements Algorithm{
             if (!sublist2.contains(currentCityInTour1))
                 secondChildPI.add(currentCityInTour1);
         }
-
-        // crossover rate in hundred percent
-        int percentUniformCrossoverRate = (int) (uniformCrossoverRate * 100);
         // add sublist into child
         firstChildPI.addAll(start, sublist1);
         secondChildPI.addAll(start, sublist2);
+
+        // crossover rate in hundred percent
+        int percentUniformCrossoverRate = (int) (uniformCrossoverRate * 100);
 
         List<Boolean> firstChildZ = new ArrayList<>();
         List<Boolean> secondChildZ = new ArrayList<>();
@@ -210,14 +253,17 @@ public class NtgaAlgorithm implements Algorithm{
             }
         }
 
-
         // init two children
         Solution child1 = new Solution();
-        child1.pi = firstChildPI;
-        child1.z = firstChildZ;
+//        child1.pi = firstChildPI;
+//        child1.z = firstChildZ;
+        child1.pi = new ArrayList<>(firstChildPI);
+        child1.z = new ArrayList<>(firstChildZ);
         Solution child2 = new Solution();
-        child2.pi = secondChildPI;
-        child2.z = secondChildZ;
+//        child2.pi = secondChildPI;
+//        child2.z = secondChildZ;
+        child2.pi = new ArrayList<>(secondChildPI);
+        child2.z = new ArrayList<>(secondChildZ);
         // init children population
         List<Solution> children = new ArrayList<>();
         // add into children
@@ -246,16 +292,21 @@ public class NtgaAlgorithm implements Algorithm{
 
     /**
      * fast non-dominated sorting with time complexity O(MN^2) which M is objectives and N is individual number
+     * @param updateRank whether update the individual rank
      * */
-    private void nonDominatedSorting(List<Solution> population, boolean showInfo){
+    private List<Integer> nonDominatedSorting(List<Solution> population, boolean showInfo, boolean updateRank){
         // how many other individuals can dominate an individual - 多少个体能支配它
         List<Integer> dominated = new ArrayList<>(population.size());
         // list of individuals that an individual dominates - 支配哪些个体
         List<List<Integer>> dominates = new ArrayList<>(population.size());
         List<List<Integer>> paretoFront = new ArrayList<>();  // Pareto front
 
+        List<Integer> ranks = new ArrayList<>();  // a list is used to store rank
+
         for (Solution s : population){
-            s.rank = Integer.MAX_VALUE;  // reset rank for each individual
+            if (updateRank) {
+                s.rank = Integer.MAX_VALUE;  // reset rank for each individual
+            }
             // init list
             dominated.add(0);
             dominates.add(new ArrayList<>());
@@ -274,7 +325,12 @@ public class NtgaAlgorithm implements Algorithm{
                 }
             }
             if (dominated.get(p.index) == 0){  // pareto front
-                p.rank = 0;
+                if (updateRank) {
+                    p.rank = 0;
+                }
+                else {
+                    ranks.add(0);
+                }
                 paretoFront.get(0).add(p.index);
             }
         }
@@ -292,7 +348,12 @@ public class NtgaAlgorithm implements Algorithm{
                     int otherIndividual = dominates.get(paretoFront.get(i).get(m)).get(n);
                     dominated.set(otherIndividual, dominated.get(otherIndividual)-1);
                     if (dominated.get(otherIndividual) == 0){
-                        population.get(otherIndividual).rank = i + 1;  // sorting
+                        if (updateRank) {
+                            population.get(otherIndividual).rank = i + 1;  // sorting
+                        }
+                        else {
+                            ranks.add(i + 1);
+                        }
                         temp.add(otherIndividual);
                     }
                 }
@@ -302,6 +363,13 @@ public class NtgaAlgorithm implements Algorithm{
         }
         if (showInfo)
             System.out.println("paretoFront: " + paretoFront);
+
+        if (updateRank){
+            return null;
+        }
+        else {
+            return ranks;
+        }
     }
 
     /**
@@ -313,7 +381,7 @@ public class NtgaAlgorithm implements Algorithm{
 
         List<Solution> population = new ArrayList<>();  // init a population
         int individualIndex = 0;  // init individual index
-        int packingRate = (int) (initPackingRate * 100);  // convert packing into hundred percent (int)
+        int packingRate = (int) (initPackingRate * 100);  // convert packing rate into hundred percent (int)
 //        System.out.println("packing rate: " + packingRate);
 
         while(population.size() < populationSize){
@@ -341,6 +409,17 @@ public class NtgaAlgorithm implements Algorithm{
             }
         }
         return population;
+    }
+
+    /**
+     * the function is used to judge whether the individual is cloned from population
+     */
+    private boolean isCloned(Solution individual, List<Solution> population){
+        for (Solution other : population){
+            if (individual.equalsInDesignSpace(other))  // compare the genotype between individual and other
+                return true;
+        }
+        return false;
     }
 
     private List<Integer> getIndex(int low, int high) {
