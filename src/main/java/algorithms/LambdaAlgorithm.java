@@ -21,16 +21,16 @@ public class LambdaAlgorithm implements Algorithm {
 	int populationSize;
 
 	// Tournament size
-	int tournamentSize = 8;
+	int tournamentSize = 2;
 
 	// Mutation Factor
-	double mutationFactor = 0.03;
+	double mutationFactor = 0.01;
 
 	// Clone Prevention
-	boolean clonePrevention = true;
+	boolean clonePrevention = false;
 
 	// Number of generations to run the algorithm for
-	int totalGenerations = 180;
+	int totalGenerations = 10000;
 
 	public List<Solution> entries = new LinkedList<>();
 
@@ -232,6 +232,66 @@ public class LambdaAlgorithm implements Algorithm {
 		}
 		// After tournament selection is done run a crossover
 		crossover(parentA, parentB, population, problem, childPopulation);
+	}
+
+	// Order crossover function
+	private void odercrossover(Solution parentA, Solution parentB, List<Solution> population,
+			TravelingThiefProblem problem, List<Solution> childPopulation) {
+		Random rand = new Random();
+
+		Solution parentAfromPop = population.get(parentA.index);
+
+		// Lists to hold paths of crossover
+
+		List<Integer> childCPi = new ArrayList<>();
+		List<Integer> childDPi = new ArrayList<>();
+
+		Solution parentBfromPop = population.get(parentB.index);
+
+		// Choosing a random crossover point
+
+		int size = parentAfromPop.pi.size();
+		int sublistLength = (int) ((1.00 - 0.01) * size); // sublist length
+		// choose two random numbers for the start and end indices of the slice
+		int start = rand.nextInt(size - sublistLength);
+		int end = start + sublistLength;
+
+		// add the sublist in between the start and end points
+		List<Integer> sublist1 = new ArrayList<>(parentAfromPop.pi.subList(start, end));
+		List<Integer> sublist2 = new ArrayList<>(parentBfromPop.pi.subList(start, end));
+
+		// iterate over each city in the parent tours
+		for (int i = 0; i < size; ++i) {
+			// get the city at the current index in each of the two parent tours
+			int currentCityInTour1 = parentAfromPop.pi.get(i);
+			int currentCityInTour2 = parentBfromPop.pi.get(i);
+			// if sublist1 does not already contain the current city in parent2, add it
+			if (!sublist1.contains(currentCityInTour2))
+				childCPi.add(currentCityInTour2);
+			// if sublist2 does not already contain the current city in parent1, add it
+			if (!sublist2.contains(currentCityInTour1))
+				childDPi.add(currentCityInTour1);
+		}
+		// add sublist into child
+		childCPi.addAll(start, sublist1);
+		childDPi.addAll(start, sublist2);
+
+		// Uniform crossover between child C and D for z
+		List<Boolean> childCz = new ArrayList<>();
+		List<Boolean> childDz = new ArrayList<>();
+		for (int i = 0; i < parentAfromPop.z.size(); i++) {
+			if (rand.nextInt(2) == 0) {
+				childCz.add(parentAfromPop.z.get(i));
+				childDz.add(parentBfromPop.z.get(i));
+			} else {
+				childCz.add(parentBfromPop.z.get(i));
+				childDz.add(parentAfromPop.z.get(i));
+			}
+		}
+
+		// Start the mutation
+		this.mutate(childCPi, childDPi, childCz, childDz, population, childPopulation, problem);
+
 	}
 
 	private void crossover(Solution parentA, Solution parentB, List<Solution> population, TravelingThiefProblem problem,
