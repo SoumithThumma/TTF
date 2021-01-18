@@ -28,12 +28,11 @@ In the following the project structure is explained:
     ├── model
         ├── TravelingThiefProblem.java: The problem object used to evaluate the problem for a given tour and packing plan.
         ├── Solution.java: Object to store the results of the evaluate function.
-        └── Solution.java: NonDominatedSet.java: Example implementation of a non-dominated set. Can be done faster/better.
+        └── NonDominatedSet.java: Example implementation of a non-dominated set. Can be done faster/better.
     ├── algorithms
         ├── Algorithm: Interface for the algorithm to be implemented from.
-        ├── ExhaustiveSearch: Solves the problem exhaustively which means iterating over all possible tours and packing plans.
-        ├── RandomLocalSearch: Example algorithm to randomly fix a tour and then iterate over possible packing plans.
-        └── LambdaAlgorithm: NSGA II algorithm implemented by team Lambda
+        ├── NtgaAlgorithm: NTGA algorithm implemented by Team Lambda.
+        └── LambdaAlgorithm: NSGA II algorithm implemented by Team Lambda.
 
 
 
